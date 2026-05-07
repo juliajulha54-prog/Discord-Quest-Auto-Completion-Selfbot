@@ -1,3 +1,29 @@
-"scripts": {
-  "start": "tsx bot.ts"
+{
+  "name": "discord-quest-selfbot",
+  "version": "1.0.0",
+  "description": "discord quest automation",
+  "main": "bot.ts",
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning --import tsx bot.ts",
+    "dev": "tsx bot.ts"
+  },
+  "keywords": [],
+  "author": "aiko-chan-ai",
+  "license": "GPL-3.0-only",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@discordjs/core": "2.4.0",
+    "@discordjs/rest": "2.6.0",
+    "@discordjs/ws": "2.0.4",
+    "undici": "^6.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "discord-api-types": "^0.38.42",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3"
+  }
 }
