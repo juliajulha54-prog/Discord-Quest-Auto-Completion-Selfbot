@@ -1,58 +1,50 @@
 import { GatewayDispatchEvents } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
-import { Utils } from './src/utils';
+// Removi o Utils se não estiver sendo usado, ou mantenha se necessário
+// import { Utils } from './src/utils';
+
+const token = process.env.TOKEN;
+
+if (!token) {
+    console.error("ERRO: A variável de ambiente TOKEN não foi encontrada!");
+    console.error("Certifique-se de adicioná-la na aba 'Variables' do Railway.");
+    process.exit(1);
+}
+
+const client = new ClientQuest(token);
 
 let currentUserId: string | null = null;
 
-const client = new ClientQuest(process.env.TOKEN!);
+client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
+    currentUserId = data.user.id;
+    console.log(`Conectado como: ${data.user.username} (${currentUserId})`);
 
-/*
-client.on(
-	GatewayDispatchEvents.MessageCreate,
-	async ({ data: message, api }) => {
-		console.log('Message received:', message.content);
-		if (message.content === 'ping' && message.author.id === currentUserId) {
-			await api.channels.createMessage(message.channel_id, {
-				content: 'pong',
-			});
-		}
-	},
-);
-*/
+    try {
+        await client.fetchQuests(false);
+        const questsValid = client.questManager!.filterQuestsValidToDo();
+        
+        console.log(`Encontradas ${questsValid.length} quests válidas para realizar.`);
+        
+        await Promise.allSettled(
+            questsValid.map((quest) => client.questManager!.doingQuest(quest)),
+        );
 
-client.once(GatewayDispatchEvents.Ready, async ({ data, api }) => {
-	currentUserId = data.user.id;
-	// console.log(`Logged in as @${data.user.username}`);
-	console.log('Logged in!');
-
-	await client.fetchQuests(false);
-	const questsValid = client.questManager!.filterQuestsValidToDo();
-	console.log(`Found ${questsValid.length} valid quests to do.`);
-	await Promise.allSettled(
-		questsValid.map((quest) => client.questManager!.doingQuest(quest)),
-	);
-
-	// ! Redeem rewards for completed quests
-	// Todo: Cache quests
-	/*
-	await client.fetchQuests(false);
-	const questsToRedeem = client.questManager!.filterQuestsValidToRedeem();
-	console.log(`Found ${questsToRedeem.length} quests to redeem rewards for.`);
-	for (const quest of questsToRedeem) {
-		await client.questManager!.redeemQuest(quest);
-	}
-	*/
-	// Disconnect
-	console.log('All quests processed. Disconnecting...');
-	await client.destroy();
+        console.log('Todas as quests foram processadas. Desconectando...');
+    } catch (error) {
+        console.error('Erro ao processar quests:', error);
+    } finally {
+        await client.destroy();
+        process.exit(0); // Finaliza o processo após concluir no Railway
+    }
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-	console.error('[Error:] Unhandled Rejection');
+// Tratamento de erros globais para evitar que o Railway fique reiniciando em loop sem logar o erro
+process.on('unhandledRejection', (reason) => {
+    console.error('[Erro:] Rejeição não tratada:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-	console.error('Uncaught Exception:', error.message);
+    console.error('[Erro:] Exceção não capturada:', error.message);
 });
 
 client.connect();
