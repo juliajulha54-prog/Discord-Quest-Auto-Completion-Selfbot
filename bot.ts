@@ -1,44 +1,64 @@
 import { GatewayDispatchEvents } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
 
-let currentUserId: string | null = null;
-
-const token = process.env.TOKEN;
+const token = process.env.TOKEN?.trim();
 
 if (!token) {
-	console.error('TOKEN não encontrada nas variáveis do Railway.');
+	console.error('TOKEN não encontrada nas variables.');
 	process.exit(1);
 }
 
 const client = new ClientQuest(token);
 
-client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
-	currentUserId = data.user.id;
+let isChecking = false;
+let initialized = false;
 
-	console.log(`Logged in as ${data.user.username}`);
+async function checkQuests() {
+	if (isChecking) return;
+	isChecking = true;
 
 	try {
+		console.log('[QUEST] Fetching quests...');
+
 		await client.fetchQuests(false);
 
-		const questsValid = client
+		const quests = client
 			.questManager!
 			.filterQuestsValidToDo();
 
-		console.log(`Found ${questsValid.length} valid quests to do.`);
+		console.log(`[QUEST] ${quests.length} valid quests found.`);
 
-		await Promise.allSettled(
-			questsValid.map((quest) =>
-				client.questManager!.doingQuest(quest),
-			),
-		);
+		for (const quest of quests) {
+			try {
+				console.log(`[QUEST] Processing: ${quest.id}`);
 
-		console.log('All quests processed.');
+				await client.questManager!.doingQuest(quest);
+
+				console.log(`[QUEST] Completed: ${quest.id}`);
+
+				await new Promise((r) => setTimeout(r, 5000));
+			} catch (err) {
+				console.error(`[QUEST ERROR] ${quest.id}`, err);
+			}
+		}
 	} catch (err) {
-		console.error('Quest error:', err);
+		console.error('[FETCH ERROR]', err);
 	} finally {
-		console.log('Disconnecting...');
-		await client.destroy();
+		isChecking = false;
 	}
+}
+
+client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
+	console.log(`Logged in as ${data.user.username}`);
+
+	if (initialized) return;
+	initialized = true;
+
+	await checkQuests();
+
+	setInterval(async () => {
+		await checkQuests();
+	}, 1000 * 60 * 5);
 });
 
 process.on('unhandledRejection', (reason) => {
