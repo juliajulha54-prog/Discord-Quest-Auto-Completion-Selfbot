@@ -16,22 +16,28 @@ let interval: NodeJS.Timeout | null = null;
 let botId: string | null = null;
 
 // ==========================================
-// CONFIGURAÇÕES DOS STATUS ROTATIVOS (6s)
+// CONFIGURAÇÕES DOS STATUS E TEMPOS
 // ==========================================
 let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
-let presenceInterval: NodeJS.Timeout | null = null;
+let phrasesInterval: NodeJS.Timeout | null = null;
+let statusInterval: NodeJS.Timeout | null = null;
 
-/**
- * Lista de rotação completa (NADA DE ONLINE / BOLINHA VERDE AQUI)
- * 0 = Playing (Jogando)
- * 1 = Streaming (Transmitindo - Roxinho)
- * 2 = Listening (Ouvindo)
- */
+// Frases fixas do Sasuke mudando a cada 900ms
+const sasukePhrases = [
+	{ text: 'blzkkkkkkkkkk' },
+	{ text: 'TOMA TOMA TOMA SUA CACHORRA NA XERECA' },
+	{ text: 'KKKKKKKKK??????' },
+	{ text: 'TOMA TOMA SUA PIRANHA' }
+];
+let phraseIndex = 0;
+
+// Lista de atividades e cores mudando a cada 2 segundos
+// Nota: Para o Roxo se propagar em todo lugar, o status de fundo DEVE ser 'online'.
 const rotatingSchedule = [
-	{ text: 'blzkkkkkkkkkk', name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
-	{ text: 'ok', name: 'Twitch', type: 1, status: PresenceUpdateStatus.DoNotDisturb }, // Transmitindo com bolinha Vermelha!
-	{ text: 'sla?', name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
-	{ text: 'sla', name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
+	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },          // Laranja
+	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/twitch', status: PresenceUpdateStatus.Online }, // Roxo (Ícone e Bolinha funcionais)
+	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },    // Vermelho
+	{ name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }            // Laranja
 ];
 let scheduleIndex = 0;
 
@@ -39,59 +45,58 @@ function updatePresence() {
 	const shard = client.websocketManager['strategy']['shards']?.get(0);
 	if (!shard) return;
 
+	// Pega a frase atual que muda super rápido
+	const currentPhrase = sasukePhrases[phraseIndex];
+
 	let statusToGo: string;
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// Comando manual ?setstatus transmitting: Fica FIXO no roxinho sob a bolinha DND (Vermelha)
-		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
+		// Comando manual ?setstatus transmitting: FIXO no roxo perfeito com o ícone original da Twitch
+		statusToGo = PresenceUpdateStatus.Online; 
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
 				type: 4, 
-				state: rotatingSchedule[0].text,
+				state: currentPhrase.text,
 				id: 'custom'
 			},
 			{
-				name: 'Stream Fixa Twitch', 
+				name: 'Twitch', 
 				type: 1, 
 				url: 'https://twitch.tv/twitch', 
 				flags: 1
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
-		// Comando manual ?setstatus idle: Fixo no laranja rodando as frases
+		// Comando manual ?setstatus idle: Fixo no Laranja
 		statusToGo = PresenceUpdateStatus.Idle;
-		const currentItem = rotatingSchedule[scheduleIndex];
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' }];
-		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
 	} else if (currentStatusMode === 'dnd') {
-		// Comando manual ?setstatus dnd: Fixo no vermelho rodando as frases
+		// Comando manual ?setstatus dnd: Fixo no Vermelho
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
-		const currentItem = rotatingSchedule[scheduleIndex];
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' }];
-		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
 	} else {
-		// MODO ROTATIVO PADRÃO (?setstatus rotate): Alterna apenas entre Idle e DND
+		// MODO ROTATIVO PADRÃO (Troca de bolinha/atividade a cada 2 segundos)
 		const currentItem = rotatingSchedule[scheduleIndex];
 		statusToGo = currentItem.status;
 
 		if (currentItem.type === 1) {
-			// Aplica o roxinho na rotação mantendo o status Idle ou DND que estiver definido no objeto
+			// Item de Transmissão dentro do rotativo (Ativa a bolinha roxa globalmente)
 			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' },
-				{ name: currentItem.name, type: 1, url: 'https://twitch.tv/twitch', flags: 1 }
+				{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' },
+				{ name: currentItem.name, type: 1, url: currentItem.url, flags: 1 }
 			];
 		} else {
+			// Atividades normais (Jogando, ouvindo...)
 			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' },
+				{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' },
 				{ name: currentItem.name, type: currentItem.type }
 			];
 		}
-		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
 	}
 
-	// Envio direto para a API do Discord
+	// Envia o payload final corrigido para o gateway do Discord
 	shard.send({
 		op: 3,
 		d: {
@@ -100,14 +105,27 @@ function updatePresence() {
 			status: statusToGo,
 			afk: false
 		}
-	}).catch((err) => console.error('[PRESENCE ERROR]', err));
+	}).catch(() => {});
 }
 
-function startPresenceRotation() {
-	if (presenceInterval) clearInterval(presenceInterval);
-	presenceInterval = setInterval(() => {
+function startSyncTimers() {
+	if (phrasesInterval) clearInterval(phrasesInterval);
+	if (statusInterval) clearInterval(statusInterval);
+
+	// Trocador das frases: 900 milésimos de segundo
+	phrasesInterval = setInterval(() => {
+		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
-	}, 6000);
+	}, 900);
+
+	// Trocador dos status e atividades: 2 segundos (2000ms)
+	statusInterval = setInterval(() => {
+		if (currentStatusMode === 'rotating') {
+			scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
+		}
+		updatePresence();
+	}, 2000);
+
 	updatePresence();
 }
 // ==========================================
@@ -157,7 +175,8 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		console.log(`[CLIENT] Logado como ${data.user.username}`);
 		botId = data.user.id;
 
-		startPresenceRotation();
+		// Ativa os novos temporizadores rápidos e independentes
+		startSyncTimers();
 
 		if (initialized) return;
 		initialized = true;
@@ -206,11 +225,11 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			} else if (comandoStatus === 'transmitting') {
 				currentStatusMode = 'transmitting';
 				updatePresence();
-				console.log('[STATUS] Modo manual: Transmitindo com DND.');
+				console.log('[STATUS] Modo manual: Transmitindo Roxo Fixo.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
-				console.log('[STATUS] Retornado para a rotação automática sem verde.');
+				console.log('[STATUS] Retornado para a rotação automática rápida.');
 			}
 		}
 	} catch (err) {
@@ -228,7 +247,8 @@ process.on('uncaughtException', (error) => {
 
 process.on('SIGINT', () => {
 	console.log('[CLIENT] Encerrando aplicação...');
-	if (presenceInterval) clearInterval(presenceInterval);
+	if (phrasesInterval) clearInterval(phrasesInterval);
+	if (statusInterval) clearInterval(statusInterval);
 	if (interval) clearInterval(interval);
 	process.exit(0);
 });
@@ -236,4 +256,3 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-	
