@@ -24,11 +24,11 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 // Frases do Sasuke (Alternam rapidamente no balão de Custom Status)
 const sasukePhrases = [
-	{ text: 'e se o nosso romance tocasse no rádio' },
-	{ text: 'e se o noticiário falasse de nós' },
-	{ text: 'e se o resto da vida estivesse a um passo daqui..' },
-	{ text: 'e se hoje pudesse ser quando eu te encontro...'},
-	{ text: 'o começo de tudo' }
+	{ text: 'meu sonho é arrombar uma porta no chute' },
+	{ text: 'se preguiça fosse dinheiro eu tava era rico' },
+	{ text: '💀💀💀' },
+	{ text: 'se eu sumir é pq dormi sem querer'},
+	{ text: 'pretendo ficar acordado até o Natal' }
 ];
 let phraseIndex = 0;
 
