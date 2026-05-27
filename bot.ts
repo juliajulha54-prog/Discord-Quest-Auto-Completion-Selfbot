@@ -13,6 +13,7 @@ const client = new ClientQuest(token);
 let isChecking = false;
 let initialized = false;
 let interval: NodeJS.Timeout | null = null;
+let botId: string | null = null; // Armazena o ID do bot para validação
 
 async function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -63,6 +64,9 @@ async function checkQuests() {
 client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	try {
 		console.log(`[CLIENT] Logado como ${data.user.username}`);
+		
+		// Guarda o ID da própria conta logada
+		botId = data.user.id;
 
 		if (initialized) return;
 		initialized = true;
@@ -85,17 +89,17 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	}
 });
 
-// Evento adicionado para ouvir mensagens e deletar se contiver "?say"
+// Evento que ouve as mensagens e apaga APENAS as da própria conta
 client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
-		if (message.content && message.content.includes('?say')) {
-			console.log(`[MESSAGE] Detectado "?say" na mensagem ${message.id}. Deletando...`);
+		// Verifica se a mensagem veio do próprio bot e se contém "?say"
+		if (botId && message.author?.id === botId && message.content && message.content.includes('?say')) {
+			console.log(`[MESSAGE] Minha própria mensagem contendo "?say" detectada (${message.id}). Deletando...`);
 			
-			// Executa a deleção da mensagem
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 		}
 	} catch (err) {
-		console.error('[MESSAGE DELETE ERROR] Erro ao tentar apagar a mensagem:', err);
+		console.error('[MESSAGE DELETE ERROR] Erro ao tentar apagar a própria mensagem:', err);
 	}
 });
 
@@ -118,4 +122,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-					
+			
