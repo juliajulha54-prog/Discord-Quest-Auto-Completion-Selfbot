@@ -1,4 +1,4 @@
-import { GatewayDispatchEvents, GatewayPresenceUpdate, ActivityType, PresenceUpdateStatus } from 'discord-api-types/v10';
+import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
 
 const token = process.env.TOKEN?.trim();
@@ -18,48 +18,56 @@ let botId: string | null = null;
 // ==========================================
 // CONFIGURAÇÕES DOS STATUS ROTATIVOS (6s)
 // ==========================================
-let currentStatusMode: 'online' | 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
+let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
 let presenceInterval: NodeJS.Timeout | null = null;
 
+// Rotação apenas entre Ausente (Laranja) e Não Perturbe (Vermelho)
 const rotatingStatuses = [
-	PresenceUpdateStatus.Online,
-	PresenceUpdateStatus.DoNotDisturb,
-	PresenceUpdateStatus.Idle
+	PresenceUpdateStatus.Idle,
+	PresenceUpdateStatus.DoNotDisturb
 ];
 let statusIndex = 0;
 
-// Edite suas frases e atividades aqui à sua escolha!
-const rotatingActivities = [
-	{ text: 'Legenda da foto 1', activity: 'Jogando LoL', type: ActivityType.Game },
-	{ text: 'Legenda da foto 2', activity: 'Animes', type: ActivityType.Watching },
-	{ text: 'Legenda da foto 3', activity: 'Spotify', type: ActivityType.Listening },
+// Frases do Sasuke para o Balão de Status (Legenda)
+const sasukeActivities = [
+	{ text: 'blzkkkkkkkkkk', activity: 'Treinando o Chidori' },
+	{ text: 'ok', activity: 'Olhando para a Lua' },
+	{ text: 'como ele muda tão rápido?', activity: 'Ouvindo os corvos' },
+	{ text: 'sla', activity: 'Restaurando meu clã' }
 ];
 let activityIndex = 0;
 
 function updatePresence() {
-	// Acessa diretamente a shard ativa do gerenciador de WebSocket do DiscordJS
 	const shard = client.websocketManager['strategy']['shards']?.get(0);
 	if (!shard) return;
 
-	let payload: GatewayPresenceUpdate;
+	const currentItem = sasukeActivities[activityIndex];
+	activityIndex = (activityIndex + 1) % sasukeActivities.length;
 
-	const currentItem = rotatingActivities[activityIndex];
-	activityIndex = (activityIndex + 1) % rotatingActivities.length;
+	let statusToGo: string = PresenceUpdateStatus.Idle;
+	let activitiesPayload: any[] = [];
 
-	// Se for modo Transmitindo (Roxinho) fixo
 	if (currentStatusMode === 'transmitting') {
-		payload = {
-			since: null,
-			activities: [
-				{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
-				{ name: 'Fazendo live de quests', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }
-			],
-			status: PresenceUpdateStatus.Online,
-			afk: false,
-		};
+		// O roxinho OBRIGA a conta a ficar com a bolinha Verde (Online)
+		statusToGo = PresenceUpdateStatus.Online; 
+		
+		activitiesPayload = [
+			{
+				name: 'Custom Status',
+				type: 4, // Tipo 4 = Custom Status (Balão ao lado da foto)
+				state: currentItem.text,
+				id: 'custom'
+			},
+			{
+				name: 'Twitch', 
+				type: 1, // Tipo 1 = Streaming (Força o Roxinho no perfil)
+				url: 'https://www.twitch.tv/shroud', // Link de um streamer grande ativo ajuda a forçar o status
+				details: currentItem.activity,
+				state: 'Transmitindo Quests'
+			}
+		];
 	} else {
-		// Modo Normal ou Rotativo de bolinhas
-		let statusToGo = PresenceUpdateStatus.Online;
+		// Modo normal rotativo de bolinhas (Idle / DND)
 		if (currentStatusMode === 'rotating') {
 			statusToGo = rotatingStatuses[statusIndex];
 			statusIndex = (statusIndex + 1) % rotatingStatuses.length;
@@ -67,22 +75,30 @@ function updatePresence() {
 			statusToGo = currentStatusMode as any;
 		}
 
-		payload = {
-			since: null,
-			activities: [
-				{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
-				{ name: currentItem.activity, type: currentItem.type }
-			],
-			status: statusToGo,
-			afk: false,
-		};
+		activitiesPayload = [
+			{
+				name: 'Custom Status',
+				type: 4, // Tipo 4 = Custom Status
+				state: currentItem.text,
+				id: 'custom'
+			},
+			{
+				name: currentItem.activity,
+				type: 0 // Tipo 0 = Playing (Jogando)
+			}
+		];
 	}
 
-	// Envia forçadamente o OPCODE 3 (Presence Update) direto na Shard ativa do Selfbot
+	// Envio direto via WebSocket bruto (Opcode 3) sem filtros da biblioteca
 	shard.send({
 		op: 3,
-		d: payload
-	}).catch(() => {});
+		d: {
+			since: null,
+			activities: activitiesPayload,
+			status: statusToGo,
+			afk: false
+		}
+	}).catch((err) => console.error('[PRESENCE ERROR]', err));
 }
 
 function startPresenceRotation() {
@@ -108,11 +124,8 @@ async function checkQuests() {
 
 	try {
 		console.log('[QUEST] Buscando quests...');
-
 		await client.fetchQuests(false);
-
 		const quests = client.questManager?.filterQuestsValidToDo() || [];
-
 		console.log(`[QUEST] ${quests.length} quests válidas encontradas.`);
 
 		if (!quests.length) {
@@ -123,11 +136,8 @@ async function checkQuests() {
 		for (const quest of quests) {
 			try {
 				console.log(`[QUEST] Iniciando: ${quest.id}`);
-
 				await client.questManager?.doingQuest(quest);
-
 				console.log(`[QUEST] Finalizada: ${quest.id}`);
-
 				await sleep(5000);
 			} catch (err) {
 				console.error(`[QUEST ERROR] Erro na quest ${quest.id}:`, err);
@@ -143,10 +153,8 @@ async function checkQuests() {
 client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	try {
 		console.log(`[CLIENT] Logado como ${data.user.username}`);
-		
 		botId = data.user.id;
 
-		// Inicia o sistema de status integrado corrigido
 		startPresenceRotation();
 
 		if (initialized) return;
@@ -155,7 +163,6 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		await checkQuests();
 
 		if (interval) clearInterval(interval);
-
 		interval = setInterval(async () => {
 			try {
 				await checkQuests();
@@ -175,41 +182,38 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 		if (!botId) return;
 
 		if (message.author?.id === botId && message.content && message.content.includes('?say')) {
-			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem (${message.id}). Apagando...`);
+			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem. Apagando...`);
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 			return;
 		}
 
+		// COMANDOS DE CHAT CORRIGIDOS
 		if (message.author?.id === botId && message.content && message.content.startsWith('?setstatus')) {
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 
 			const args = message.content.split(' ');
 			const comandoStatus = args[1]?.toLowerCase();
 
-			if (comandoStatus === 'online') {
-				currentStatusMode = 'online';
-				updatePresence();
-				console.log('[STATUS] Alterado manualmente para Online fixo.');
-			} else if (comandoStatus === 'idle') {
+			if (comandoStatus === 'idle') {
 				currentStatusMode = 'idle';
 				updatePresence();
-				console.log('[STATUS] Alterado manualmente para Ausente fixo.');
+				console.log('[STATUS] Modo manual: Ausente (Laranja).');
 			} else if (comandoStatus === 'dnd') {
 				currentStatusMode = 'dnd';
 				updatePresence();
-				console.log('[STATUS] Alterado manualmente para Não Perturbe fixo.');
+				console.log('[STATUS] Modo manual: Não Perturbe (Vermelho).');
 			} else if (comandoStatus === 'transmitting') {
 				currentStatusMode = 'transmitting';
 				updatePresence();
-				console.log('[STATUS] Alterado para Modo Transmissão (Roxinho fixo).');
+				console.log('[STATUS] Modo manual: Transmitindo (Roxinho).');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
-				console.log('[STATUS] Voltou para o modo Rotativo Automático.');
+				console.log('[STATUS] Retornado para a rotação automática.');
 			}
 		}
 	} catch (err) {
-		console.error('[MESSAGE EVENT ERROR] Erro no processamento da mensagem:', err);
+		console.error('[MESSAGE EVENT ERROR]', err);
 	}
 });
 
@@ -231,4 +235,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-			
+		
