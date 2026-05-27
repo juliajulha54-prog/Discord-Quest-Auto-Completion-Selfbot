@@ -1,6 +1,5 @@
-import { GatewayDispatchEvents } from 'discord-api-types/v10';
+import { GatewayDispatchEvents, GatewayPresenceUpdate, ActivityType, PresenceUpdateStatus } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
-import { PresenceManager } from './src/presenceManager'; // Importa o novo sistema
 
 const token = process.env.TOKEN?.trim();
 
@@ -10,12 +9,87 @@ if (!token) {
 }
 
 const client = new ClientQuest(token);
-let presenceManager: PresenceManager | null = null; // Instância global
 
 let isChecking = false;
 let initialized = false;
 let interval: NodeJS.Timeout | null = null;
 let botId: string | null = null;
+
+// ==========================================
+// CONFIGURAÇÕES DOS STATUS ROTATIVOS (6s)
+// ==========================================
+let currentStatusMode: 'online' | 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
+let presenceInterval: NodeJS.Timeout | null = null;
+
+const rotatingStatuses = [
+	PresenceUpdateStatus.Online,
+	PresenceUpdateStatus.DoNotDisturb,
+	PresenceUpdateStatus.Idle
+];
+let statusIndex = 0;
+
+// Edite suas frases e atividades aqui!
+const rotatingActivities = [
+	{ text: 'Legenda da foto 1', activity: 'Jogando', type: ActivityType.Playing },
+	{ text: 'Legenda da foto 2', activity: 'Anime', type: ActivityType.Watching },
+	{ text: 'Legenda da foto 3', activity: 'Spotify', type: ActivityType.Listening },
+];
+let activityIndex = 0;
+
+function updatePresence() {
+	if (!client.websocketManager) return;
+
+	// Se for modo Transmitindo (Roxinho) fixo
+	if (currentStatusMode === 'transmitting') {
+		const currentItem = rotatingActivities[activityIndex];
+		activityIndex = (activityIndex + 1) % rotatingActivities.length;
+
+		const payload: GatewayPresenceUpdate = {
+			since: null,
+			activities: [
+				{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
+				{ name: 'Fazendo live de quests', type: ActivityType.Streaming, url: 'https://www.twitch.tv/discord' }
+			],
+			status: PresenceUpdateStatus.Online,
+			afk: false,
+		};
+		client.websocketManager.broadcast(0, payload as any);
+		return;
+	}
+
+	// Modo Normal ou Rotativo de bolinhas
+	let statusToGo = PresenceUpdateStatus.Online;
+	if (currentStatusMode === 'rotating') {
+		statusToGo = rotatingStatuses[statusIndex];
+		statusIndex = (statusIndex + 1) % rotatingStatuses.length;
+	} else {
+		statusToGo = currentStatusMode as any;
+	}
+
+	const currentItem = rotatingActivities[activityIndex];
+	activityIndex = (activityIndex + 1) % rotatingActivities.length;
+
+	const payload: GatewayPresenceUpdate = {
+		since: null,
+		activities: [
+			{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
+			{ name: currentItem.activity, type: currentItem.type }
+		],
+		status: statusToGo,
+		afk: false,
+	};
+
+	client.websocketManager.broadcast(0, payload as any);
+}
+
+function startPresenceRotation() {
+	if (presenceInterval) clearInterval(presenceInterval);
+	presenceInterval = setInterval(() => {
+		updatePresence();
+	}, 6000);
+	updatePresence();
+}
+// ==========================================
 
 async function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,9 +143,8 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		
 		botId = data.user.id;
 
-		// Inicializa e liga o sistema de status rotativo a cada 6s
-		presenceManager = new PresenceManager(client.websocketManager);
-		presenceManager.start();
+		// Inicia o sistema de status integrado
+		startPresenceRotation();
 
 		if (initialized) return;
 		initialized = true;
@@ -98,40 +171,37 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
-		// Filtro antigo para apagar o comando ?say da própria conta
 		if (message.author?.id === botId && message.content && message.content.includes('?say')) {
 			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem (${message.id}). Apagando...`);
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 			return;
 		}
 
-		// NOVO: Ouvinte do comando ?setstatus da própria conta
 		if (message.author?.id === botId && message.content && message.content.startsWith('?setstatus')) {
-			// Apaga a mensagem do comando imediatamente
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 
 			const args = message.content.split(' ');
-			const comandoStatus = args[1]?.toLowerCase(); // Pega o argumento (ex: online, dnd, transmitting)
-
-			if (!presenceManager) return;
+			const comandoStatus = args[1]?.toLowerCase();
 
 			if (comandoStatus === 'online') {
-				presenceManager.disableTransmitting();
-				presenceManager.setManualStatus('online');
+				currentStatusMode = 'online';
+				updatePresence();
 				console.log('[STATUS] Alterado manualmente para Online fixo.');
 			} else if (comandoStatus === 'idle') {
-				presenceManager.disableTransmitting();
-				presenceManager.setManualStatus('idle');
+				currentStatusMode = 'idle';
+				updatePresence();
 				console.log('[STATUS] Alterado manualmente para Ausente fixo.');
 			} else if (comandoStatus === 'dnd') {
-				presenceManager.disableTransmitting();
-				presenceManager.setManualStatus('dnd');
+				currentStatusMode = 'dnd';
+				updatePresence();
 				console.log('[STATUS] Alterado manualmente para Não Perturbe fixo.');
 			} else if (comandoStatus === 'transmitting') {
-				presenceManager.setManualStatus('transmitting');
+				currentStatusMode = 'transmitting';
+				updatePresence();
 				console.log('[STATUS] Alterado para Modo Transmissão (Roxinho fixo).');
 			} else if (comandoStatus === 'rotate') {
-				presenceManager.disableTransmitting();
+				currentStatusMode = 'rotating';
+				updatePresence();
 				console.log('[STATUS] Voltou para o modo Rotativo Automático.');
 			}
 		}
@@ -150,7 +220,7 @@ process.on('uncaughtException', (error) => {
 
 process.on('SIGINT', () => {
 	console.log('[CLIENT] Encerrando aplicação...');
-	if (presenceManager) presenceManager.stop();
+	if (presenceInterval) clearInterval(presenceInterval);
 	if (interval) clearInterval(interval);
 	process.exit(0);
 });
@@ -158,4 +228,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-					  
+		
