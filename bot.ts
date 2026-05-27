@@ -65,7 +65,6 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	try {
 		console.log(`[CLIENT] Logado como ${data.user.username}`);
 		
-		// Salva o ID da conta logada
 		botId = data.user.id;
 
 		if (initialized) return;
@@ -89,16 +88,11 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	}
 });
 
-// Evento de detecção de mensagens aprimorado
 client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
-		// Pega o ID do bot da variável local ou tenta buscar direto da instância do client se ela existir
-		const currentBotId = botId || (client as any).user?.id;
+		if (!botId) return;
 
-		if (!currentBotId) return;
-
-		// Verifica se a mensagem veio do ID do próprio bot E se o texto contém "?say"
-		if (message.author?.id === currentBotId && message.content && message.content.includes('?say')) {
+		if (message.author?.id === botId && message.content && message.content.includes('?say')) {
 			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem (${message.id}). Apagando...`);
 			
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
@@ -127,4 +121,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-	
+			
