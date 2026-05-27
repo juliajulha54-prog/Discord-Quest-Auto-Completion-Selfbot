@@ -21,19 +21,17 @@ let botId: string | null = null;
 let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
 let presenceInterval: NodeJS.Timeout | null = null;
 
-// Rotação apenas entre Ausente (Laranja) e Não Perturbe (Vermelho)
 const rotatingStatuses = [
 	PresenceUpdateStatus.Idle,
 	PresenceUpdateStatus.DoNotDisturb
 ];
 let statusIndex = 0;
 
-// Frases do Sasuke para o Balão de Status (Legenda)
 const sasukeActivities = [
-	{ text: 'blzkkkkkkkkkk', activity: '' },
-	{ text: 'ok', activity: '' },
-	{ text: 'sla?', activity: '' },
-	{ text: 'sla', activity: '' }
+	{ text: 'blzkkkkkkkkkk' },
+	{ text: 'ok' },
+	{ text: 'sla?' },
+	{ text: 'sla' }
 ];
 let activityIndex = 0;
 
@@ -48,26 +46,23 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// O roxinho OBRIGA a conta a ficar com a bolinha Verde (Online)
 		statusToGo = PresenceUpdateStatus.Online; 
 		
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
-				type: 4, // Tipo 4 = Custom Status (Balão ao lado da foto)
+				type: 4, 
 				state: currentItem.text,
 				id: 'custom'
 			},
 			{
 				name: 'Twitch', 
-				type: 1, // Tipo 1 = Streaming (Força o Roxinho no perfil)
-				url: 'https://www.twitch.tv/shroud', // Link de um streamer grande ativo ajuda a forçar o status
-				details: currentItem.activity,
-				state: 'Transmitindo Quests'
+				type: 1, // Streaming
+				url: 'https://twitch.tv/twitch', 
+				flags: 1 // Força o gateway a reconhecer o estado roxo de transmissão
 			}
 		];
 	} else {
-		// Modo normal rotativo de bolinhas (Idle / DND)
 		if (currentStatusMode === 'rotating') {
 			statusToGo = rotatingStatuses[statusIndex];
 			statusIndex = (statusIndex + 1) % rotatingStatuses.length;
@@ -78,18 +73,13 @@ function updatePresence() {
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
-				type: 4, // Tipo 4 = Custom Status
+				type: 4, 
 				state: currentItem.text,
 				id: 'custom'
-			},
-			{
-				name: currentItem.activity,
-				type: 0 // Tipo 0 = Playing (Jogando)
 			}
 		];
 	}
 
-	// Envio direto via WebSocket bruto (Opcode 3) sem filtros da biblioteca
 	shard.send({
 		op: 3,
 		d: {
@@ -187,7 +177,6 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			return;
 		}
 
-		// COMANDOS DE CHAT CORRIGIDOS
 		if (message.author?.id === botId && message.content && message.content.startsWith('?setstatus')) {
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 
@@ -235,4 +224,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-		
+				
