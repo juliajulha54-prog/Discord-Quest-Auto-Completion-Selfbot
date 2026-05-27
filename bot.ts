@@ -13,7 +13,7 @@ const client = new ClientQuest(token);
 let isChecking = false;
 let initialized = false;
 let interval: NodeJS.Timeout | null = null;
-let botId: string | null = null; // Armazena o ID do bot para validação
+let botId: string | null = null;
 
 async function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -65,7 +65,7 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	try {
 		console.log(`[CLIENT] Logado como ${data.user.username}`);
 		
-		// Guarda o ID da própria conta logada
+		// Salva o ID da conta logada
 		botId = data.user.id;
 
 		if (initialized) return;
@@ -89,12 +89,17 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	}
 });
 
-// Evento que ouve as mensagens e apaga APENAS as da própria conta
+// Evento de detecção de mensagens aprimorado
 client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
-		// Verifica se a mensagem veio do próprio bot e se contém "?say"
-		if (botId && message.author?.id === botId && message.content && message.content.includes('?say')) {
-			console.log(`[MESSAGE] Minha própria mensagem contendo "?say" detectada (${message.id}). Deletando...`);
+		// Pega o ID do bot da variável local ou tenta buscar direto da instância do client se ela existir
+		const currentBotId = botId || (client as any).user?.id;
+
+		if (!currentBotId) return;
+
+		// Verifica se a mensagem veio do ID do próprio bot E se o texto contém "?say"
+		if (message.author?.id === currentBotId && message.content && message.content.includes('?say')) {
+			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem (${message.id}). Apagando...`);
 			
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 		}
