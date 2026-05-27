@@ -16,24 +16,25 @@ let interval: NodeJS.Timeout | null = null;
 let botId: string | null = null;
 
 // ==========================================
-// CONFIGURAÇÕES DOS STATUS E TEMPOS ADJUSTADOS
+// CONFIGURAÇÕES DE PRESENÇA E TIMERS
 // ==========================================
 let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
 let phrasesInterval: NodeJS.Timeout | null = null;
 let statusInterval: NodeJS.Timeout | null = null;
 
+// Frases do Sasuke (Alternam rapidamente no balão de Custom Status)
 const sasukePhrases = [
 	{ text: 'TOMA TOMA SUA PIRANHA' },
 	{ text: 'NA XERECA' },
-	{ text: 'TOMA TOMA TOMA NA BCT' },
-	{ text: 'OXIKKKKKKKK???💀💀' }
+	{ text: 'NA BCTT' },
+	{ text: 'OXIKKKKKKKKK???💀💀'}
 ];
 let phraseIndex = 0;
 
-// Rotação otimizada para evitar bloqueios do Discord
+// Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
-	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/twitch', status: PresenceUpdateStatus.Online }, // Roxo obrigatório
+	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.Online }, // Roxo Perfeito
 	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
 	{ name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
 ];
@@ -48,7 +49,7 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// Modo Fixo Transmitindo: Focado apenas na Twitch para não bugar a propagação global
+		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos
 		statusToGo = PresenceUpdateStatus.Online; 
 		activitiesPayload = [
 			{
@@ -60,18 +61,20 @@ function updatePresence() {
 			{
 				name: 'Twitch', 
 				type: 1, 
-				url: 'https://twitch.tv/twitch', 
+				url: 'https://twitch.tv/shroud', 
 				flags: 1
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
+		// [FIXO] ?setstatus idle -> Fixo no Laranja
 		statusToGo = PresenceUpdateStatus.Idle;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
 	} else if (currentStatusMode === 'dnd') {
+		// [FIXO] ?setstatus dnd -> Fixo no Vermelho
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
 	} else {
-		// MODO ROTATIVO
+		// [ROTATIVO] ?setstatus rotate -> Passa por todas as atividades e cores
 		const currentItem = rotatingSchedule[scheduleIndex];
 		statusToGo = currentItem.status;
 
@@ -88,6 +91,7 @@ function updatePresence() {
 		}
 	}
 
+	// Envia de forma limpa para evitar bloqueio de conexões
 	shard.send({
 		op: 3,
 		d: {
@@ -103,19 +107,19 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
-	// Mudança de frases
+	// Loop rápido de Frases (900ms) sem travar a presença
 	phrasesInterval = setInterval(() => {
 		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
 	}, 900);
 
-	// Mudança de atividades (Aumentado ligeiramente para o Discord aceitar sem travar a conta)
+	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
 		if (currentStatusMode === 'rotating') {
 			scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
 		}
 		updatePresence();
-	}, 2500);
+	}, 2000);
 
 	updatePresence();
 }
@@ -130,6 +134,7 @@ async function checkQuests() {
 	isChecking = true;
 
 	try {
+		console.log('[QUEST] Verificando missões...');
 		await client.fetchQuests(false);
 		const quests = client.questManager?.filterQuestsValidToDo() || [];
 
@@ -145,14 +150,14 @@ async function checkQuests() {
 		}
 	} catch (err) {
 		console.error('[FETCH ERROR]', err);
-	} finaly {
+	} finally {
 		isChecking = false;
 	}
 }
 
 client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	try {
-		console.log(`[CLIENT] Logado como ${data.user.username}`);
+		console.log(`[CLIENT] Conectado com sucesso como: ${data.user.username}`);
 		botId = data.user.id;
 
 		startSyncTimers();
@@ -193,15 +198,19 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			if (comandoStatus === 'idle') {
 				currentStatusMode = 'idle';
 				updatePresence();
+				console.log('[STATUS] Modo fixo: Ausente (Laranja).');
 			} else if (comandoStatus === 'dnd') {
 				currentStatusMode = 'dnd';
 				updatePresence();
+				console.log('[STATUS] Modo fixo: Não Perturbe (Vermelho).');
 			} else if (comandoStatus === 'transmitting') {
 				currentStatusMode = 'transmitting';
 				updatePresence();
+				console.log('[STATUS] Modo fixo: Transmitindo (Roxinho Global).');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
+				console.log('[STATUS] Retornado para a rotação automática estável.');
 			}
 		}
 	} catch (err) {
@@ -220,4 +229,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-			
+	
