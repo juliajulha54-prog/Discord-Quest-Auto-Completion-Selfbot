@@ -35,7 +35,7 @@ let phraseIndex = 0;
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
 	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.Online }, // Roxo Perfeito
-	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.Streaming },
+	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
 	{ name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
 ];
 let scheduleIndex = 0;
@@ -50,7 +50,7 @@ function updatePresence() {
 
 	if (currentStatusMode === 'transmitting') {
 		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos
-		statusToGo = PresenceUpdateStatus.Streaming; 
+		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
