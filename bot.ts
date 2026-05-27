@@ -22,7 +22,7 @@ let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating'
 let phrasesInterval: NodeJS.Timeout | null = null;
 let statusInterval: NodeJS.Timeout | null = null;
 
-// Frases do Sasuke (Alternam rapidamente no balão de Custom Status)
+// Frases do Sasuke (Alternam a cada 2 segundos)
 const sasukePhrases = [
 	{ text: 'meu sonho é arrombar uma porta no chute' },
 	{ text: 'se preguiça fosse dinheiro eu tava era rico' },
@@ -108,7 +108,7 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
-	// Loop rápido de Frases (900ms) sem travar a presença
+	// Temporizador das frases cravado em 2 segundos (2000ms)
 	phrasesInterval = setInterval(() => {
 		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
@@ -230,4 +230,3 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-	
