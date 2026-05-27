@@ -26,7 +26,7 @@ let statusInterval: NodeJS.Timeout | null = null;
 const sasukePhrases = [
 	{ text: 'TOMA TOMA SUA PIRANHA' },
 	{ text: 'NA XERECA' },
-	{ text: 'NA BCTT' },
+	{ text: 'NA BCT' },
 	{ text: 'OXIKKKKKKKKK???💀💀'}
 ];
 let phraseIndex = 0;
@@ -50,7 +50,7 @@ function updatePresence() {
 
 	if (currentStatusMode === 'transmitting') {
 		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos
-		statusToGo = PresenceUpdateStatus.Online; 
+		statusToGo = PresenceUpdateStatus; 
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
