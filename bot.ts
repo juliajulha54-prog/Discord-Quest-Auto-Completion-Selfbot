@@ -28,23 +28,27 @@ const rotatingStatuses = [
 ];
 let statusIndex = 0;
 
-// Edite suas frases e atividades aqui!
+// Edite suas frases e atividades aqui à sua escolha!
 const rotatingActivities = [
-	{ text: 'Legenda da foto 1', activity: 'Jogando', type: ActivityType.Playing },
-	{ text: 'Legenda da foto 2', activity: 'Anime', type: ActivityType.Watching },
+	{ text: 'Legenda da foto 1', activity: 'Jogando LoL', type: ActivityType.Game },
+	{ text: 'Legenda da foto 2', activity: 'Animes', type: ActivityType.Watching },
 	{ text: 'Legenda da foto 3', activity: 'Spotify', type: ActivityType.Listening },
 ];
 let activityIndex = 0;
 
 function updatePresence() {
-	if (!client.websocketManager) return;
+	// Acessa diretamente a shard ativa do gerenciador de WebSocket do DiscordJS
+	const shard = client.websocketManager['strategy']['shards']?.get(0);
+	if (!shard) return;
+
+	let payload: GatewayPresenceUpdate;
+
+	const currentItem = rotatingActivities[activityIndex];
+	activityIndex = (activityIndex + 1) % rotatingActivities.length;
 
 	// Se for modo Transmitindo (Roxinho) fixo
 	if (currentStatusMode === 'transmitting') {
-		const currentItem = rotatingActivities[activityIndex];
-		activityIndex = (activityIndex + 1) % rotatingActivities.length;
-
-		const payload: GatewayPresenceUpdate = {
+		payload = {
 			since: null,
 			activities: [
 				{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
@@ -53,33 +57,32 @@ function updatePresence() {
 			status: PresenceUpdateStatus.Online,
 			afk: false,
 		};
-		client.websocketManager.broadcast(0, payload as any);
-		return;
-	}
-
-	// Modo Normal ou Rotativo de bolinhas
-	let statusToGo = PresenceUpdateStatus.Online;
-	if (currentStatusMode === 'rotating') {
-		statusToGo = rotatingStatuses[statusIndex];
-		statusIndex = (statusIndex + 1) % rotatingStatuses.length;
 	} else {
-		statusToGo = currentStatusMode as any;
+		// Modo Normal ou Rotativo de bolinhas
+		let statusToGo = PresenceUpdateStatus.Online;
+		if (currentStatusMode === 'rotating') {
+			statusToGo = rotatingStatuses[statusIndex];
+			statusIndex = (statusIndex + 1) % rotatingStatuses.length;
+		} else {
+			statusToGo = currentStatusMode as any;
+		}
+
+		payload = {
+			since: null,
+			activities: [
+				{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
+				{ name: currentItem.activity, type: currentItem.type }
+			],
+			status: statusToGo,
+			afk: false,
+		};
 	}
 
-	const currentItem = rotatingActivities[activityIndex];
-	activityIndex = (activityIndex + 1) % rotatingActivities.length;
-
-	const payload: GatewayPresenceUpdate = {
-		since: null,
-		activities: [
-			{ name: 'Custom Status', type: ActivityType.Custom, state: currentItem.text },
-			{ name: currentItem.activity, type: currentItem.type }
-		],
-		status: statusToGo,
-		afk: false,
-	};
-
-	client.websocketManager.broadcast(0, payload as any);
+	// Envia forçadamente o OPCODE 3 (Presence Update) direto na Shard ativa do Selfbot
+	shard.send({
+		op: 3,
+		d: payload
+	}).catch(() => {});
 }
 
 function startPresenceRotation() {
@@ -143,7 +146,7 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		
 		botId = data.user.id;
 
-		// Inicia o sistema de status integrado
+		// Inicia o sistema de status integrado corrigido
 		startPresenceRotation();
 
 		if (initialized) return;
@@ -228,4 +231,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-		
+			
