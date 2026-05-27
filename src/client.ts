@@ -12,7 +12,6 @@ async function makeRequest(
 	url: string,
 	init: RequestInit,
 ): Promise<ResponseLike> {
-	// console.log(`Making request to ${url} with method ${init.method}...`);
 	if (init.headers) {
 		init.headers = Utils.makeHeaders(init.headers as any);
 	}
@@ -22,10 +21,12 @@ async function makeRequest(
 const originalSend = WebSocketShard.prototype.send;
 WebSocketShard.prototype.send = async function (payload: GatewaySendPayload) {
 	if (payload.op === GatewayOpcodes.Identify) {
+		// Remove o prefixo "Bot " que a biblioteca força internamente no token do gateway
+		const cleanToken = payload.d.token.replace(/^Bot\s+/i, '');
+		
 		payload.d = {
-			token: payload.d.token,
+			token: cleanToken,
 			properties: {
-				...Constants.Properties,
 				os: 'Windows',
 				browser: 'Chrome',
 				device: '',
@@ -43,7 +44,7 @@ WebSocketShard.prototype.send = async function (payload: GatewaySendPayload) {
 				is_fast_connect: false,
 				gateway_connect_reasons: 'AppSkeleton',
 			},
-			capabilities: 65, // Envia as capabilities corretas de uma conta de usuário
+			capabilities: 65,
 			presence: payload.d.presence,
 			compress: payload.d.compress,
 			client_state: {
@@ -68,7 +69,10 @@ export class ClientQuest extends Client {
 		if (!token) {
 			throw new Error('Token is required to initialize the client.');
 		}
-		const rest = new REST({ version: '10', makeRequest }).setToken(token);
+		
+		// Criando a instância do REST configurada especificamente para Userbot (sem prefixo Bot)
+		const rest = new REST({ version: '10', makeRequest, authPrefix: '' }).setToken(token);
+		
 		rest.on('rateLimited', (info: any) => {
 			console.warn(
 				`\n[RateLimit]\n` +
@@ -78,11 +82,13 @@ export class ClientQuest extends Client {
 					`  -> Retry after: ${info.retryAfter}ms (${(info.retryAfter / 1000).toFixed(2)}s)\n`,
 			);
 		});
+		
 		const gateway = new WebSocketManager({
 			token: token,
-			intents: 0, // Voltou para 0 para evitar o erro de Autenticação em Userbots
+			intents: 0, 
 			rest,
 		});
+		
 		gateway.fetchGatewayInformation = (
 			force?: boolean,
 		): Promise<APIGatewayBotInfo> => {
@@ -152,4 +158,4 @@ export class ClientQuest extends Client {
 		);
 	}
 				}
-		
+	
