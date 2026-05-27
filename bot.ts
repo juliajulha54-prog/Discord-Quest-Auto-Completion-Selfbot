@@ -34,7 +34,7 @@ let phraseIndex = 0;
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
-	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.Online }, // Roxo Perfeito
+	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.DoNotDisturb }, // Roxo Perfeito
 	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
 	{ name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
 ];
