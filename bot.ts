@@ -1,5 +1,6 @@
 import { GatewayDispatchEvents } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
+import { PresenceManager } from './src/presenceManager'; // Importa o novo sistema
 
 const token = process.env.TOKEN?.trim();
 
@@ -9,6 +10,7 @@ if (!token) {
 }
 
 const client = new ClientQuest(token);
+let presenceManager: PresenceManager | null = null; // Instância global
 
 let isChecking = false;
 let initialized = false;
@@ -67,6 +69,10 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		
 		botId = data.user.id;
 
+		// Inicializa e liga o sistema de status rotativo a cada 6s
+		presenceManager = new PresenceManager(client.websocketManager);
+		presenceManager.start();
+
 		if (initialized) return;
 		initialized = true;
 
@@ -92,13 +98,45 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
+		// Filtro antigo para apagar o comando ?say da própria conta
 		if (message.author?.id === botId && message.content && message.content.includes('?say')) {
 			console.log(`[MESSAGE] Detectado "?say" na minha própria mensagem (${message.id}). Apagando...`);
-			
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
+			return;
+		}
+
+		// NOVO: Ouvinte do comando ?setstatus da própria conta
+		if (message.author?.id === botId && message.content && message.content.startsWith('?setstatus')) {
+			// Apaga a mensagem do comando imediatamente
+			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
+
+			const args = message.content.split(' ');
+			const comandoStatus = args[1]?.toLowerCase(); // Pega o argumento (ex: online, dnd, transmitting)
+
+			if (!presenceManager) return;
+
+			if (comandoStatus === 'online') {
+				presenceManager.disableTransmitting();
+				presenceManager.setManualStatus('online');
+				console.log('[STATUS] Alterado manualmente para Online fixo.');
+			} else if (comandoStatus === 'idle') {
+				presenceManager.disableTransmitting();
+				presenceManager.setManualStatus('idle');
+				console.log('[STATUS] Alterado manualmente para Ausente fixo.');
+			} else if (comandoStatus === 'dnd') {
+				presenceManager.disableTransmitting();
+				presenceManager.setManualStatus('dnd');
+				console.log('[STATUS] Alterado manualmente para Não Perturbe fixo.');
+			} else if (comandoStatus === 'transmitting') {
+				presenceManager.setManualStatus('transmitting');
+				console.log('[STATUS] Alterado para Modo Transmissão (Roxinho fixo).');
+			} else if (comandoStatus === 'rotate') {
+				presenceManager.disableTransmitting();
+				console.log('[STATUS] Voltou para o modo Rotativo Automático.');
+			}
 		}
 	} catch (err) {
-		console.error('[MESSAGE DELETE ERROR] Erro ao tentar apagar a própria mensagem:', err);
+		console.error('[MESSAGE EVENT ERROR] Erro no processamento da mensagem:', err);
 	}
 });
 
@@ -112,13 +150,12 @@ process.on('uncaughtException', (error) => {
 
 process.on('SIGINT', () => {
 	console.log('[CLIENT] Encerrando aplicação...');
-
+	if (presenceManager) presenceManager.stop();
 	if (interval) clearInterval(interval);
-
 	process.exit(0);
 });
 
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-					
+					  
