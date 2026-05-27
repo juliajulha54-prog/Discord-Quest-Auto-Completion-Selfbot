@@ -50,7 +50,7 @@ function updatePresence() {
 
 	if (currentStatusMode === 'transmitting') {
 		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos
-		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
+		statusToGo = PresenceUpdateStatus.Streaming; 
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
