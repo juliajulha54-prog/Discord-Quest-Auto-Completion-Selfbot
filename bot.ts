@@ -30,10 +30,10 @@ let statusIndex = 0;
 
 // Frases do Sasuke para o Balão de Status (Legenda)
 const sasukeActivities = [
-	{ text: 'blzkkkkkkkkkk', activity: 'Treinando o Chidori' },
-	{ text: 'ok', activity: 'Olhando para a Lua' },
-	{ text: 'como ele muda tão rápido?', activity: 'Ouvindo os corvos' },
-	{ text: 'sla', activity: 'Restaurando meu clã' }
+	{ text: 'blzkkkkkkkkkk', activity: '' },
+	{ text: 'ok', activity: '' },
+	{ text: 'sla?', activity: '' },
+	{ text: 'sla', activity: '' }
 ];
 let activityIndex = 0;
 
