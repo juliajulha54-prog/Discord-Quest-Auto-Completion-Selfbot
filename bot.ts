@@ -85,6 +85,20 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 	}
 });
 
+// Evento adicionado para ouvir mensagens e deletar se contiver "?say"
+client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
+	try {
+		if (message.content && message.content.includes('?say')) {
+			console.log(`[MESSAGE] Detectado "?say" na mensagem ${message.id}. Deletando...`);
+			
+			// Executa a deleção da mensagem
+			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
+		}
+	} catch (err) {
+		console.error('[MESSAGE DELETE ERROR] Erro ao tentar apagar a mensagem:', err);
+	}
+});
+
 process.on('unhandledRejection', (reason) => {
 	console.error('[UnhandledRejection]', reason);
 });
@@ -104,3 +118,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
+					
