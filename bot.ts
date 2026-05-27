@@ -112,7 +112,7 @@ function startSyncTimers() {
 	phrasesInterval = setInterval(() => {
 		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
-	}, 1500);
+	}, 2000);
 
 	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
