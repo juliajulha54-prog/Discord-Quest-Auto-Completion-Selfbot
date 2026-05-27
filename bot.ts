@@ -24,10 +24,10 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 // Frases do Sasuke (Alternam rapidamente no balão de Custom Status)
 const sasukePhrases = [
-	{ text: 'TOMA TOMA SUA PIRANHA' },
-	{ text: 'NA XERECA' },
-	{ text: 'NA BCT' },
-	{ text: 'OXIKKKKKKKKK???💀💀'}
+	{ text: 'e se o nosso romance tocasse no rádio' },
+	{ text: 'e se o noticiário falasse de nós' },
+	{ text: 'e se o resto da vida estivesse a um passo daqui..' },
+	{ text: ' e se hoje pudesse ser quando eu te encontro...'}
 ];
 let phraseIndex = 0;
 
