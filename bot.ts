@@ -21,65 +21,77 @@ let botId: string | null = null;
 let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
 let presenceInterval: NodeJS.Timeout | null = null;
 
-const rotatingStatuses = [
-	PresenceUpdateStatus.Idle,
-	PresenceUpdateStatus.DoNotDisturb
+/**
+ * Lista de rotação completa (NADA DE ONLINE / BOLINHA VERDE AQUI)
+ * 0 = Playing (Jogando)
+ * 1 = Streaming (Transmitindo - Roxinho)
+ * 2 = Listening (Ouvindo)
+ */
+const rotatingSchedule = [
+	{ text: 'blzkkkkkkkkkk', name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
+	{ text: 'ok', name: 'Twitch', type: 1, status: PresenceUpdateStatus.DoNotDisturb }, // Transmitindo com bolinha Vermelha!
+	{ text: 'sla?', name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
+	{ text: 'sla', name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
 ];
-let statusIndex = 0;
-
-const sasukeActivities = [
-	{ text: 'blzkkkkkkkkkk' },
-	{ text: 'ok' },
-	{ text: 'sla?' },
-	{ text: 'sla' }
-];
-let activityIndex = 0;
+let scheduleIndex = 0;
 
 function updatePresence() {
 	const shard = client.websocketManager['strategy']['shards']?.get(0);
 	if (!shard) return;
 
-	const currentItem = sasukeActivities[activityIndex];
-	activityIndex = (activityIndex + 1) % sasukeActivities.length;
-
-	let statusToGo: string = PresenceUpdateStatus.Idle;
+	let statusToGo: string;
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		statusToGo = PresenceUpdateStatus.Online; 
-		
+		// Comando manual ?setstatus transmitting: Fica FIXO no roxinho sob a bolinha DND (Vermelha)
+		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
 				name: 'Custom Status',
 				type: 4, 
-				state: currentItem.text,
+				state: rotatingSchedule[0].text,
 				id: 'custom'
 			},
 			{
-				name: 'Twitch', 
-				type: 1, // Streaming
+				name: 'Stream Fixa Twitch', 
+				type: 1, 
 				url: 'https://twitch.tv/twitch', 
-				flags: 1 // Força o gateway a reconhecer o estado roxo de transmissão
+				flags: 1
 			}
 		];
+	} else if (currentStatusMode === 'idle') {
+		// Comando manual ?setstatus idle: Fixo no laranja rodando as frases
+		statusToGo = PresenceUpdateStatus.Idle;
+		const currentItem = rotatingSchedule[scheduleIndex];
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' }];
+		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
+	} else if (currentStatusMode === 'dnd') {
+		// Comando manual ?setstatus dnd: Fixo no vermelho rodando as frases
+		statusToGo = PresenceUpdateStatus.DoNotDisturb;
+		const currentItem = rotatingSchedule[scheduleIndex];
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' }];
+		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
 	} else {
-		if (currentStatusMode === 'rotating') {
-			statusToGo = rotatingStatuses[statusIndex];
-			statusIndex = (statusIndex + 1) % rotatingStatuses.length;
-		} else {
-			statusToGo = currentStatusMode as any;
-		}
+		// MODO ROTATIVO PADRÃO (?setstatus rotate): Alterna apenas entre Idle e DND
+		const currentItem = rotatingSchedule[scheduleIndex];
+		statusToGo = currentItem.status;
 
-		activitiesPayload = [
-			{
-				name: 'Custom Status',
-				type: 4, 
-				state: currentItem.text,
-				id: 'custom'
-			}
-		];
+		if (currentItem.type === 1) {
+			// Aplica o roxinho na rotação mantendo o status Idle ou DND que estiver definido no objeto
+			activitiesPayload = [
+				{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' },
+				{ name: currentItem.name, type: 1, url: 'https://twitch.tv/twitch', flags: 1 }
+			];
+		} else {
+			activitiesPayload = [
+				{ name: 'Custom Status', type: 4, state: currentItem.text, id: 'custom' },
+				{ name: currentItem.name, type: currentItem.type }
+			];
+		}
+		scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
 	}
 
+	// Envio direto para a API do Discord
 	shard.send({
 		op: 3,
 		d: {
@@ -186,19 +198,19 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			if (comandoStatus === 'idle') {
 				currentStatusMode = 'idle';
 				updatePresence();
-				console.log('[STATUS] Modo manual: Ausente (Laranja).');
+				console.log('[STATUS] Modo manual: Ausente (Laranja fixo).');
 			} else if (comandoStatus === 'dnd') {
 				currentStatusMode = 'dnd';
 				updatePresence();
-				console.log('[STATUS] Modo manual: Não Perturbe (Vermelho).');
+				console.log('[STATUS] Modo manual: Não Perturbe (Vermelho fixo).');
 			} else if (comandoStatus === 'transmitting') {
 				currentStatusMode = 'transmitting';
 				updatePresence();
-				console.log('[STATUS] Modo manual: Transmitindo (Roxinho).');
+				console.log('[STATUS] Modo manual: Transmitindo com DND.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
-				console.log('[STATUS] Retornado para a rotação automática.');
+				console.log('[STATUS] Retornado para a rotação automática sem verde.');
 			}
 		}
 	} catch (err) {
@@ -224,4 +236,4 @@ process.on('SIGINT', () => {
 client.connect().catch((err: any) => {
 	console.error('[CONNECT ERROR]', err);
 });
-				
+	
