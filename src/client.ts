@@ -62,7 +62,7 @@ export class ClientQuest extends Client {
 		});
 		const gateway = new WebSocketManager({
 			token: token,
-			intents: 0,
+			intents: 37376, // Alterado de 0 para habilitar GuildMessages, DirectMessages e MessageContent
 			rest,
 		});
 		gateway.fetchGatewayInformation = (
@@ -133,4 +133,5 @@ export class ClientQuest extends Client {
 			`[Quest Completed!](https://discord.com/quests/${questId})`,
 		);
 	}
-}
+			}
+	
