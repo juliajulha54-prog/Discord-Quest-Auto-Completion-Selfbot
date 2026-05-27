@@ -35,7 +35,7 @@ let phraseIndex = 0;
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
 	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.Online }, // Roxo Perfeito
-	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
+	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.Streaming },
 	{ name: 'Minecraft', type: 0, status: PresenceUpdateStatus.Idle }
 ];
 let scheduleIndex = 0;
