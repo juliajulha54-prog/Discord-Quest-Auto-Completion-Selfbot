@@ -27,7 +27,7 @@ const sasukePhrases = [
 	{ text: 'e se o nosso romance tocasse no rádio' },
 	{ text: 'e se o noticiário falasse de nós' },
 	{ text: 'e se o resto da vida estivesse a um passo daqui..' },
-	{ text: ' e se hoje pudesse ser quando eu te encontro...'}
+	{ text: 'e se hoje pudesse ser quando eu te encontro...'}
 ];
 let phraseIndex = 0;
 
