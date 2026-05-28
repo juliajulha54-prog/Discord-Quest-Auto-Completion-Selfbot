@@ -26,7 +26,7 @@ let statusInterval: NodeJS.Timeout | null = null;
 const sasukePhrases = [
 	{ text: 'meu sonho é arrombar uma porta no chute' },
 	{ text: 'sou contra acordar cedo, nada de bom acontece antes do meio-dia' },
-	{ text: 'Sopa do Geraldo? 😳' },
+	{ text: 'escrevi e sai correndo... ' },
 	{ text: 'se eu sumir é pq dormi sem querer'},
 	{ text: '???????'}
 ];
