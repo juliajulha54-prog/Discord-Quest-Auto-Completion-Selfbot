@@ -25,10 +25,10 @@ let statusInterval: NodeJS.Timeout | null = null;
 // Frases do Sasuke (Alternam a cada 2 segundos)
 const sasukePhrases = [
 	{ text: 'meu sonho é arrombar uma porta no chute' },
-	{ text: '' },
-	{ text: '' },
+	{ text: 'sou contra acordar cedo, nada de bom acontece antes do meio-dia' },
+	{ text: 'Sopa do Geraldo? 😳' },
 	{ text: 'se eu sumir é pq dormi sem querer'},
-	{ text: '' }
+	{ text: '???????'}
 ];
 let phraseIndex = 0;
 
@@ -112,7 +112,7 @@ function startSyncTimers() {
 	phrasesInterval = setInterval(() => {
 		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
-	}, 2000);
+	}, 1500);
 
 	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
