@@ -25,10 +25,10 @@ let statusInterval: NodeJS.Timeout | null = null;
 // Frases do Sasuke (Alternam a cada 2 segundos)
 const sasukePhrases = [
 	{ text: 'meu sonho é arrombar uma porta no chute' },
-	{ text: 'se preguiça fosse dinheiro eu tava era rico' },
-	{ text: '💀💀💀' },
+	{ text: '' },
+	{ text: '' },
 	{ text: 'se eu sumir é pq dormi sem querer'},
-	{ text: 'pretendo ficar acordado até o Natal' }
+	{ text: '' }
 ];
 let phraseIndex = 0;
 
