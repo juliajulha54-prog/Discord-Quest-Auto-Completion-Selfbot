@@ -1,23 +1,26 @@
-// del.ts
-export async function handleDel(client: any, message: any) {
-	// Remove o comando "?del " instantaneamente da mensagem
+// ==========================================
+// COMANDO: ?del (Edita na hora via API e apaga em 2s)
+// ==========================================
+if (message.content.startsWith('?del')) {
 	const textoParaEnviar = message.content.replace(/^\?del\s*/i, '');
 
-	if (textoParaEnviar.length > 0) {
-		try {
-			// Edita IMEDIATAMENTE sem delay nenhum
-			await message.edit(textoParaEnviar);
+	try {
+		if (textoParaEnviar.length > 0) {
+			// Edita diretamente na API do Discord sem depender do objeto message do discord.js
+			await client.rest.patch(`/channels/${message.channel_id}/messages/${message.id}`, {
+				body: { content: textoParaEnviar }
+			});
 
-			// Aguarda exatamente 2 segundos após a edição e deleta
+			// Espera 2 segundos e apaga a mensagem editada
 			setTimeout(async () => {
-				await message.delete().catch(() => {});
+				await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`).catch(() => {});
 			}, 2000);
-
-		} catch (err) {
-			console.error('[DEL ERROR] Falha ao editar a mensagem:', err);
+		} else {
+			// Se digitou apenas "?del", apaga direto
+			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 		}
-	} else {
-		// Se digitou apenas "?del" sem nada na frente, deleta direto
-		await message.delete().catch(() => {});
+	} catch (err) {
+		console.error('[DEL ERROR] Erro ao processar o comando ?del:', err);
 	}
+	return;
 }
