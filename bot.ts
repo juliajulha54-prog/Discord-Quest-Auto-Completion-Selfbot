@@ -22,13 +22,13 @@ let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating'
 let phrasesInterval: NodeJS.Timeout | null = null;
 let statusInterval: NodeJS.Timeout | null = null;
 
-// Frases do Sasuke (Alternam a cada 2 segundos)
+// Frases do Sasuke (Alternam a cada 1.5 segundos)
 const sasukePhrases = [
 	{ text: 'meu sonho é arrombar uma porta no chute' },
 	{ text: 'sou contra acordar cedo, nada de bom acontece antes do meio-dia' },
 	{ text: 'escrevi e sai correndo... ' },
 	{ text: 'se eu sumir é pq dormi sem querer'},
-	{ text: '???????'}
+	{ text: '???????' }
 ];
 let phraseIndex = 0;
 
@@ -108,7 +108,7 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
-	// Temporizador das frases cravado em 2 segundos (2000ms)
+	// Temporizador das frases cravado em 1.5 segundos
 	phrasesInterval = setInterval(() => {
 		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
@@ -185,12 +185,44 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
-		if (message.author?.id === botId && message.content && message.content.includes('?say')) {
+		// Verifica se a mensagem foi enviada pelo dono do selfbot
+		if (message.author?.id !== botId) return;
+
+		// ==========================================
+		// COMANDO INTEGRAD: ?del (Edita na hora e apaga em 2s)
+		// ==========================================
+		if (message.content && message.content.startsWith('?del')) {
+			const textoParaEnviar = message.content.replace(/^\?del\s*/i, '');
+
+			try {
+				if (textoParaEnviar.length > 0) {
+					// Edita diretamente na API usando a rota REST nativa sem delay
+					await client.rest.patch(`/channels/${message.channel_id}/messages/${message.id}`, {
+						body: { content: textoParaEnviar }
+					});
+
+					// Aguarda exatamente 2 segundos e deleta a mensagem editada
+					setTimeout(async () => {
+						await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`).catch(() => {});
+					}, 2000);
+				} else {
+					// Se digitou apenas "?del", deleta direto
+					await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
+				}
+			} catch (err) {
+				console.error('[DEL ERROR] Falha ao executar o comando ?del:', err);
+			}
+			return;
+		}
+
+		// COMANDO: ?say
+		if (message.content && message.content.includes('?say')) {
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 			return;
 		}
 
-		if (message.author?.id === botId && message.content && message.content.startsWith('?setstatus')) {
+		// COMANDO: ?setstatus
+		if (message.content && message.content.startsWith('?setstatus')) {
 			await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 
 			const args = message.content.split(' ');
@@ -230,3 +262,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
+							  
