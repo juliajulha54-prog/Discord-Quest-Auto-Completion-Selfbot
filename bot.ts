@@ -22,11 +22,6 @@ let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating'
 let phrasesInterval: NodeJS.Timeout | null = null;
 let statusInterval: NodeJS.Timeout | null = null;
 
-// Frases do Sasuke (Alternam a cada 1.5 segundos)
-const sasukePhrases = [
-	
-	 
-];
 let phraseIndex = 0;
 
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
@@ -42,7 +37,7 @@ function updatePresence() {
 	const shard = client.websocketManager['strategy']['shards']?.get(0);
 	if (!shard) return;
 
-	const currentPhrase = sasukePhrases[phraseIndex];
+	const currentPhraseText = "";
 	let statusToGo: string;
 	let activitiesPayload: any[] = [];
 
@@ -53,7 +48,7 @@ function updatePresence() {
 			{
 				name: 'Custom Status',
 				type: 4, 
-				state: currentPhrase.text,
+				state: currentPhraseText,
 				id: 'custom'
 			},
 			{
@@ -66,11 +61,11 @@ function updatePresence() {
 	} else if (currentStatusMode === 'idle') {
 		// [FIXO] ?setstatus idle -> Fixo no Laranja
 		statusToGo = PresenceUpdateStatus.Idle;
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else if (currentStatusMode === 'dnd') {
 		// [FIXO] ?setstatus dnd -> Fixo no Vermelho
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' }];
+		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else {
 		// [ROTATIVO] ?setstatus rotate -> Passa por todas as atividades e cores
 		const currentItem = rotatingSchedule[scheduleIndex];
@@ -78,12 +73,12 @@ function updatePresence() {
 
 		if (currentItem.type === 1) {
 			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' },
+				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
 				{ name: currentItem.name, type: 1, url: currentItem.url, flags: 1 }
 			];
 		} else {
 			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentPhrase.text, id: 'custom' },
+				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
 				{ name: currentItem.name, type: currentItem.type }
 			];
 		}
@@ -107,7 +102,6 @@ function startSyncTimers() {
 
 	// Temporizador das frases cravado em 1.5 segundos
 	phrasesInterval = setInterval(() => {
-		phraseIndex = (phraseIndex + 1) % sasukePhrases.length;
 		updatePresence();
 	}, 1500);
 
@@ -259,4 +253,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-							  
+				
