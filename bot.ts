@@ -24,7 +24,7 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 let phraseIndex = 0;
 
-// IDs Oficiais e Globais do banco de dados do Discord
+// ID público oficial do Adobe After Effects no Discord
 const AFTER_EFFECTS_APP_ID = "994646706013618216";
 
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
@@ -45,11 +45,8 @@ const rotatingSchedule = [
 		type: 0, 
 		status: PresenceUpdateStatus.DoNotDisturb,
 		application_id: AFTER_EFFECTS_APP_ID,
-		assets: {
-			// URL direta e limpa vinda do cache global do próprio Discord
-			large_image: "https://cdn.discordapp.com/app-assets/994646706013618216/994648753236627517.png", 
-			large_text: "Renderizando composições"
-		}
+		details: "Editando vídeo",
+		state: "Renderizando composições"
 	},
 	{ 
 		name: 'Sua Mãe na cama', 
@@ -68,6 +65,7 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
+		// Modo Fixo Twitch: Payload limpo sem assets para restaurar o ícone roxo nativo
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
@@ -79,12 +77,11 @@ function updatePresence() {
 			{
 				name: 'Twitch', 
 				type: 1, 
-				url: 'https://twitch.tv/shroud',
-				details: 'Transmitindo ao vivo',
-				flags: 1
+				url: 'https://twitch.tv/shroud'
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
+		// Modo Fixo After Effects: Utiliza a integração nativa por strings para não bugar o perfil do usuário
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
@@ -97,10 +94,8 @@ function updatePresence() {
 				name: 'After Effects',
 				type: 0,
 				application_id: AFTER_EFFECTS_APP_ID,
-				assets: {
-					large_image: "https://cdn.discordapp.com/app-assets/994646706013618216/994648753236627517.png",
-					large_text: "Renderizando composições"
-				}
+				details: "Editando vídeo",
+				state: "Renderizando composições"
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
@@ -110,13 +105,14 @@ function updatePresence() {
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else {
+		// Modo Rotativo
 		const currentItem = rotatingSchedule[scheduleIndex];
 		statusToGo = currentItem.status;
 
 		if (currentItem.type === 1) {
 			activitiesPayload = [
 				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
-				{ name: currentItem.name, type: 1, url: currentItem.url, details: 'Transmitindo ao vivo', flags: 1 }
+				{ name: currentItem.name, type: 1, url: currentItem.url }
 			];
 		} else {
 			const activity: any = {
@@ -127,9 +123,11 @@ function updatePresence() {
 			if ('application_id' in currentItem) {
 				activity.application_id = currentItem.application_id;
 			}
-
-			if ('assets' in currentItem) {
-				activity.assets = currentItem.assets;
+			if ('details' in currentItem) {
+				activity.details = currentItem.details;
+			}
+			if ('state' in currentItem) {
+				activity.state = currentItem.state;
 			}
 
 			activitiesPayload = [
@@ -282,7 +280,7 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			} else if (comandoStatus === 'after' || comandoStatus === 'aftereffects') {
 				currentStatusMode = 'after_effects';
 				updatePresence();
-				console.log('[STATUS] Modo fixo: After Effects Permanente com imagem.');
+				console.log('[STATUS] Modo fixo: After Effects Permanente.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
@@ -305,4 +303,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-		
+					
