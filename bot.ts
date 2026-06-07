@@ -24,7 +24,7 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 let phraseIndex = 0;
 
-// ID público oficial do Adobe After Effects no Discord
+// IDs Oficiais e Globais do banco de dados do Discord
 const AFTER_EFFECTS_APP_ID = "994646706013618216";
 
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
@@ -38,16 +38,16 @@ const rotatingSchedule = [
 		name: 'Twitch', 
 		type: 1, 
 		url: 'https://twitch.tv/shroud', 
-		status: PresenceUpdateStatus.DoNotDisturb // Roxo Perfeito
+		status: PresenceUpdateStatus.DoNotDisturb 
 	}, 
 	{ 
 		name: 'After Effects', 
-		type: 0, // Tipo 0 = Jogando
+		type: 0, 
 		status: PresenceUpdateStatus.DoNotDisturb,
 		application_id: AFTER_EFFECTS_APP_ID,
 		assets: {
-			// Correção definitiva utilizando a imagem externa convertida via proxy nativo do Discord
-			large_image: "mp:external/3YpC-mXfI24y6U7LgW8OiwA5sQw/https/cdn.jsdelivr.net/gh/gilbbarbosa/logos@main/logos/adobe-after-effects.png", 
+			// URL direta e limpa vinda do cache global do próprio Discord
+			large_image: "https://cdn.discordapp.com/app-assets/994646706013618216/994648753236627517.png", 
 			large_text: "Renderizando composições"
 		}
 	},
@@ -68,7 +68,6 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos com a Twitch
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
@@ -80,12 +79,12 @@ function updatePresence() {
 			{
 				name: 'Twitch', 
 				type: 1, 
-				url: 'https://twitch.tv/shroud', 
+				url: 'https://twitch.tv/shroud',
+				details: 'Transmitindo ao vivo',
 				flags: 1
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
-		// [FIXO] ?setstatus after -> Força o status fixo e permanente no After Effects com imagem corrigida
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
@@ -99,31 +98,27 @@ function updatePresence() {
 				type: 0,
 				application_id: AFTER_EFFECTS_APP_ID,
 				assets: {
-					large_image: "mp:external/3YpC-mXfI24y6U7LgW8OiwA5sQw/https/cdn.jsdelivr.net/gh/gilbbarbosa/logos@main/logos/adobe-after-effects.png",
+					large_image: "https://cdn.discordapp.com/app-assets/994646706013618216/994648753236627517.png",
 					large_text: "Renderizando composições"
 				}
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
-		// [FIXO] ?setstatus idle -> Fixo no Laranja
 		statusToGo = PresenceUpdateStatus.Idle;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else if (currentStatusMode === 'dnd') {
-		// [FIXO] ?setstatus dnd -> Fixo no Vermelho
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else {
-		// [ROTATIVO] ?setstatus rotate -> Passa por todas as atividades e cores
 		const currentItem = rotatingSchedule[scheduleIndex];
 		statusToGo = currentItem.status;
 
 		if (currentItem.type === 1) {
 			activitiesPayload = [
 				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
-				{ name: currentItem.name, type: 1, url: currentItem.url, flags: 1 }
+				{ name: currentItem.name, type: 1, url: currentItem.url, details: 'Transmitindo ao vivo', flags: 1 }
 			];
 		} else {
-			// Montagem dinâmica para injetar Rich Presence nativa com imagens na rotação
 			const activity: any = {
 				name: currentItem.name,
 				type: currentItem.type
@@ -144,7 +139,6 @@ function updatePresence() {
 		}
 	}
 
-	// Envia para o Shard do Gateway de forma limpa
 	shard.send({
 		op: 3,
 		d: {
@@ -160,12 +154,10 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
-	// Temporizador das frases cravado em 1.5 segundos
 	phrasesInterval = setInterval(() => {
 		updatePresence();
 	}, 1500);
 
-	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
 		if (currentStatusMode === 'rotating') {
 			scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
@@ -217,10 +209,8 @@ client.once(GatewayDispatchEvents.Ready, async ({ data }) => {
 		if (initialized) return;
 		initialized = true;
 
-		// Primeira checagem de Quests imediata ao iniciar
 		await checkQuests();
 
-		// Loop principal para completar as missões automaticamente a cada 5 minutos
 		if (interval) clearInterval(interval);
 		interval = setInterval(async () => {
 			try {
@@ -238,7 +228,6 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
-		// Verifica se a mensagem foi enviada pelo dono do selfbot
 		if (message.author?.id !== botId) return;
 
 		// ==========================================
@@ -249,17 +238,14 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 
 			try {
 				if (textoParaEnviar.length > 0) {
-					// Edita diretamente na API usando a rota REST nativa sem delay
 					await client.rest.patch(`/channels/${message.channel_id}/messages/${message.id}`, {
 						body: { content: textoParaEnviar }
 					});
 
-					// Aguarda exatamente 2 segundos e deleta a mensagem editada
 					setTimeout(async () => {
 						await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`).catch(() => {});
 					}, 2000);
 				} else {
-					// Se digitou apenas "?del", deleta direto
 					await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 				}
 			} catch (err) {
@@ -319,4 +305,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-				
+		
