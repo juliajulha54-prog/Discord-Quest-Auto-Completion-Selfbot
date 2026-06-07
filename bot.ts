@@ -46,8 +46,8 @@ const rotatingSchedule = [
 		status: PresenceUpdateStatus.DoNotDisturb,
 		application_id: AFTER_EFFECTS_APP_ID,
 		assets: {
-			// ID do asset de imagem registrado na base de dados nativa do Discord para o After Effects
-			large_image: "994648753236627517", 
+			// Correção definitiva utilizando a imagem externa convertida via proxy nativo do Discord
+			large_image: "mp:external/3YpC-mXfI24y6U7LgW8OiwA5sQw/https/cdn.jsdelivr.net/gh/gilbbarbosa/logos@main/logos/adobe-after-effects.png", 
 			large_text: "Renderizando composições"
 		}
 	},
@@ -85,7 +85,7 @@ function updatePresence() {
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
-		// [FIXO] ?setstatus after -> Força o status fixo e permanente no After Effects com imagem
+		// [FIXO] ?setstatus after -> Força o status fixo e permanente no After Effects com imagem corrigida
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
@@ -99,7 +99,7 @@ function updatePresence() {
 				type: 0,
 				application_id: AFTER_EFFECTS_APP_ID,
 				assets: {
-					large_image: "994648753236627517",
+					large_image: "mp:external/3YpC-mXfI24y6U7LgW8OiwA5sQw/https/cdn.jsdelivr.net/gh/gilbbarbosa/logos@main/logos/adobe-after-effects.png",
 					large_text: "Renderizando composições"
 				}
 			}
@@ -319,4 +319,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-		
+				
