@@ -1,4 +1,4 @@
-Import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10';
+import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10';
 import { ClientQuest } from './src/client';
 
 const token = process.env.TOKEN?.trim();
@@ -18,17 +18,27 @@ let botId: string | null = null;
 // ==========================================
 // CONFIGURAÇÕES DE PRESENÇA E TIMERS
 // ==========================================
-let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' = 'rotating';
+let currentStatusMode: 'idle' | 'dnd' | 'transmitting' | 'rotating' | 'after_effects' = 'rotating';
 let phrasesInterval: NodeJS.Timeout | null = null;
 let statusInterval: NodeJS.Timeout | null = null;
 
 let phraseIndex = 0;
 
+// ID público oficial do Adobe After Effects no Discord
+const AFTER_EFFECTS_APP_ID = "994646706013618216";
+
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
 	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.DoNotDisturb }, // Roxo Perfeito
-	{ name: 'Spotify', type: 2, status: PresenceUpdateStatus.DoNotDisturb },
+	{ 
+		name: 'After Effects', 
+		type: 0, 
+		status: PresenceUpdateStatus.DoNotDisturb,
+		application_id: AFTER_EFFECTS_APP_ID,
+		details: "Editando vídeo",
+		state: "Renderizando composições"
+	},
 	{ name: 'Sua Mãe na cama', type: 0, status: PresenceUpdateStatus.Idle }
 ];
 let scheduleIndex = 0;
@@ -42,7 +52,7 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos
+		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos com a Twitch limpa
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
@@ -54,8 +64,25 @@ function updatePresence() {
 			{
 				name: 'Twitch', 
 				type: 1, 
-				url: 'https://twitch.tv/hyouka', 
-				flags: 1
+				url: 'https://twitch.tv/shroud'
+			}
+		];
+	} else if (currentStatusMode === 'after_effects') {
+		// [FIXO] ?setstatus after -> Força o status fixo e permanente no After Effects de forma nativa e visível
+		statusToGo = PresenceUpdateStatus.DoNotDisturb;
+		activitiesPayload = [
+			{
+				name: 'Custom Status',
+				type: 4,
+				state: currentPhraseText,
+				id: 'custom'
+			},
+			{
+				name: 'After Effects',
+				type: 0,
+				application_id: AFTER_EFFECTS_APP_ID,
+				details: "Editando vídeo",
+				state: "Renderizando composições"
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
@@ -74,12 +101,27 @@ function updatePresence() {
 		if (currentItem.type === 1) {
 			activitiesPayload = [
 				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
-				{ name: currentItem.name, type: 1, url: currentItem.url, flags: 1 }
+				{ name: currentItem.name, type: 1, url: currentItem.url }
 			];
 		} else {
+			const activity: any = {
+				name: currentItem.name,
+				type: currentItem.type
+			};
+
+			if ('application_id' in currentItem) {
+				activity.application_id = currentItem.application_id;
+			}
+			if ('details' in currentItem) {
+				activity.details = currentItem.details;
+			}
+			if ('state' in currentItem) {
+				activity.state = currentItem.state;
+			}
+
 			activitiesPayload = [
 				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
-				{ name: currentItem.name, type: currentItem.type }
+				activity
 			];
 		}
 	}
@@ -231,6 +273,10 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 				currentStatusMode = 'transmitting';
 				updatePresence();
 				console.log('[STATUS] Modo fixo: Transmitindo (Roxinho Global).');
+			} else if (comandoStatus === 'after' || comandoStatus === 'aftereffects') {
+				currentStatusMode = 'after_effects';
+				updatePresence();
+				console.log('[STATUS] Modo fixo: After Effects Permanente.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
@@ -253,3 +299,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
+			
