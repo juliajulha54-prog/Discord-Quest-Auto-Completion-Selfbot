@@ -30,14 +30,23 @@ const AFTER_EFFECTS_APP_ID = "994646706013618216";
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
-	{ name: 'Twitch', type: 1, url: 'https://twitch.tv/shroud', status: PresenceUpdateStatus.DoNotDisturb }, // Roxo Perfeito
+	{ 
+		name: 'Twitch', 
+		type: 1, 
+		url: 'https://twitch.tv/shroud', 
+		status: PresenceUpdateStatus.DoNotDisturb 
+	}, 
 	{ 
 		name: 'After Effects', 
 		type: 0, 
 		status: PresenceUpdateStatus.DoNotDisturb,
 		application_id: AFTER_EFFECTS_APP_ID,
 		details: "Editando vídeo",
-		state: "Renderizando composições"
+		state: "Renderizando composições",
+		assets: {
+			large_image: "994648753236627517", // ID do asset interno global
+			large_text: "Adobe After Effects" // ESSENCIAL: Sem texto o Discord deixa invisível
+		}
 	},
 	{ name: 'Sua Mãe na cama', type: 0, status: PresenceUpdateStatus.Idle }
 ];
@@ -52,7 +61,7 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// [FIXO] ?setstatus transmitting -> Força o ROXO perfeito em todos os cantos com a Twitch limpa
+		// [FIXO] ?setstatus transmitting -> Twitch Estável
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
@@ -68,7 +77,7 @@ function updatePresence() {
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
-		// [FIXO] ?setstatus after -> Força o status fixo e permanente no After Effects de forma nativa e visível
+		// [FIXO] ?setstatus after -> After Effects Estável com Asset Completo
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
@@ -82,19 +91,21 @@ function updatePresence() {
 				type: 0,
 				application_id: AFTER_EFFECTS_APP_ID,
 				details: "Editando vídeo",
-				state: "Renderizando composições"
+				state: "Renderizando composições",
+				assets: {
+					large_image: "994648753236627517",
+					large_text: "Adobe After Effects"
+				}
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
-		// [FIXO] ?setstatus idle -> Fixo no Laranja
 		statusToGo = PresenceUpdateStatus.Idle;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else if (currentStatusMode === 'dnd') {
-		// [FIXO] ?setstatus dnd -> Fixo no Vermelho
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
 	} else {
-		// [ROTATIVO] ?setstatus rotate -> Passa por todas as atividades e cores
+		// [ROTATIVO] ?setstatus rotate
 		const currentItem = rotatingSchedule[scheduleIndex];
 		statusToGo = currentItem.status;
 
@@ -118,6 +129,9 @@ function updatePresence() {
 			if ('state' in currentItem) {
 				activity.state = currentItem.state;
 			}
+			if ('assets' in currentItem) {
+				activity.assets = currentItem.assets;
+			}
 
 			activitiesPayload = [
 				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
@@ -126,7 +140,7 @@ function updatePresence() {
 		}
 	}
 
-	// Envia de forma limpa para evitar bloqueio de conexões
+	// Envia de forma limpa para o Gateway
 	shard.send({
 		op: 3,
 		d: {
@@ -229,17 +243,14 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 
 			try {
 				if (textoParaEnviar.length > 0) {
-					// Edita diretamente na API usando a rota REST nativa sem delay
 					await client.rest.patch(`/channels/${message.channel_id}/messages/${message.id}`, {
 						body: { content: textoParaEnviar }
 					});
 
-					// Aguarda exatamente 2 segundos e deleta a mensagem editada
 					setTimeout(async () => {
 						await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`).catch(() => {});
 					}, 2000);
 				} else {
-					// Se digitou apenas "?del", deleta direto
 					await client.rest.delete(`/channels/${message.channel_id}/messages/${message.id}`);
 				}
 			} catch (err) {
@@ -276,7 +287,7 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			} else if (comandoStatus === 'after' || comandoStatus === 'aftereffects') {
 				currentStatusMode = 'after_effects';
 				updatePresence();
-				console.log('[STATUS] Modo fixo: After Effects Permanente.');
+				console.log('[STATUS] Modo fixo: After Effects Permanente com imagem corrigida.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
@@ -299,4 +310,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-			
+	
