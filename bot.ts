@@ -24,8 +24,10 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 let phraseIndex = 0;
 
+// ID público oficial do Adobe After Effects no Discord
+const AFTER_EFFECTS_APP_ID = "994646706013618216";
+
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
-// Removemos objetos complexos de assets que o Discord bloqueia em contas normais
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
 	{ 
@@ -38,6 +40,7 @@ const rotatingSchedule = [
 		name: 'After Effects', 
 		type: 0, 
 		status: PresenceUpdateStatus.DoNotDisturb,
+		application_id: AFTER_EFFECTS_APP_ID,
 		details: "Editando vídeo",
 		state: "Renderizando composições"
 	},
@@ -49,20 +52,13 @@ function updatePresence() {
 	const shard = client.websocketManager['strategy']['shards']?.get(0);
 	if (!shard) return;
 
-	const currentPhraseText = "";
 	let statusToGo: string;
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// [FIXO] ?setstatus transmitting -> Twitch sem flags ou assets adicionais para corrigir o "?"
+		// [FIXO] ?setstatus transmitting -> Apenas a atividade de stream pura (Garante o roxo perfeito)
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
-			{
-				name: 'Custom Status',
-				type: 4, 
-				state: currentPhraseText,
-				id: 'custom'
-			},
 			{
 				name: 'Twitch', 
 				type: 1, 
@@ -70,28 +66,23 @@ function updatePresence() {
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
-		// [FIXO] ?setstatus after -> Modo de texto nativo aceito por contas de usuário comuns
+		// [FIXO] ?setstatus after -> Atividade pura do After Effects sem misturar com status customizado
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
-				name: 'Custom Status',
-				type: 4,
-				state: currentPhraseText,
-				id: 'custom'
-			},
-			{
 				name: 'After Effects',
 				type: 0,
+				application_id: AFTER_EFFECTS_APP_ID,
 				details: "Editando vídeo",
 				state: "Renderizando composições"
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
 		statusToGo = PresenceUpdateStatus.Idle;
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
+		activitiesPayload = [];
 	} else if (currentStatusMode === 'dnd') {
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
-		activitiesPayload = [{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' }];
+		activitiesPayload = [];
 	} else {
 		// [ROTATIVO] ?setstatus rotate
 		const currentItem = rotatingSchedule[scheduleIndex];
@@ -99,7 +90,6 @@ function updatePresence() {
 
 		if (currentItem.type === 1) {
 			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
 				{ name: currentItem.name, type: 1, url: currentItem.url }
 			];
 		} else {
@@ -108,6 +98,9 @@ function updatePresence() {
 				type: currentItem.type
 			};
 
+			if ('application_id' in currentItem) {
+				activity.application_id = currentItem.application_id;
+			}
 			if ('details' in currentItem) {
 				activity.details = currentItem.details;
 			}
@@ -115,14 +108,11 @@ function updatePresence() {
 				activity.state = currentItem.state;
 			}
 
-			activitiesPayload = [
-				{ name: 'Custom Status', type: 4, state: currentPhraseText, id: 'custom' },
-				activity
-			];
+			activitiesPayload = [activity];
 		}
 	}
 
-	// Envia o payload limpo e sanitizado para o Gateway
+	// Envia de forma limpa e direta ao Gateway
 	shard.send({
 		op: 3,
 		d: {
@@ -138,10 +128,12 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
+	// Temporizador das frases cravado em 1.5 segundos
 	phrasesInterval = setInterval(() => {
 		updatePresence();
 	}, 1500);
 
+	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
 		if (currentStatusMode === 'rotating') {
 			scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
@@ -212,6 +204,7 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
+		// Verifica se a mensagem foi enviada pelo dono do selfbot
 		if (message.author?.id !== botId) return;
 
 		// ==========================================
@@ -289,4 +282,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-			
+		
