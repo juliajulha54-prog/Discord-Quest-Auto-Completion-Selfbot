@@ -24,10 +24,8 @@ let statusInterval: NodeJS.Timeout | null = null;
 
 let phraseIndex = 0;
 
-// ID público oficial do Adobe After Effects no Discord
-const AFTER_EFFECTS_APP_ID = "994646706013618216";
-
 // Lista do modo rotativo (Cores e Atividades trocam a cada 2 segundos)
+// Removemos objetos complexos de assets que o Discord bloqueia em contas normais
 const rotatingSchedule = [
 	{ name: 'League of Legends', type: 0, status: PresenceUpdateStatus.Idle },
 	{ 
@@ -40,13 +38,8 @@ const rotatingSchedule = [
 		name: 'After Effects', 
 		type: 0, 
 		status: PresenceUpdateStatus.DoNotDisturb,
-		application_id: AFTER_EFFECTS_APP_ID,
 		details: "Editando vídeo",
-		state: "Renderizando composições",
-		assets: {
-			large_image: "994648753236627517", // ID do asset interno global
-			large_text: "Adobe After Effects" // ESSENCIAL: Sem texto o Discord deixa invisível
-		}
+		state: "Renderizando composições"
 	},
 	{ name: 'Sua Mãe na cama', type: 0, status: PresenceUpdateStatus.Idle }
 ];
@@ -61,7 +54,7 @@ function updatePresence() {
 	let activitiesPayload: any[] = [];
 
 	if (currentStatusMode === 'transmitting') {
-		// [FIXO] ?setstatus transmitting -> Twitch Estável
+		// [FIXO] ?setstatus transmitting -> Twitch sem flags ou assets adicionais para corrigir o "?"
 		statusToGo = PresenceUpdateStatus.DoNotDisturb; 
 		activitiesPayload = [
 			{
@@ -77,7 +70,7 @@ function updatePresence() {
 			}
 		];
 	} else if (currentStatusMode === 'after_effects') {
-		// [FIXO] ?setstatus after -> After Effects Estável com Asset Completo
+		// [FIXO] ?setstatus after -> Modo de texto nativo aceito por contas de usuário comuns
 		statusToGo = PresenceUpdateStatus.DoNotDisturb;
 		activitiesPayload = [
 			{
@@ -89,13 +82,8 @@ function updatePresence() {
 			{
 				name: 'After Effects',
 				type: 0,
-				application_id: AFTER_EFFECTS_APP_ID,
 				details: "Editando vídeo",
-				state: "Renderizando composições",
-				assets: {
-					large_image: "994648753236627517",
-					large_text: "Adobe After Effects"
-				}
+				state: "Renderizando composições"
 			}
 		];
 	} else if (currentStatusMode === 'idle') {
@@ -120,17 +108,11 @@ function updatePresence() {
 				type: currentItem.type
 			};
 
-			if ('application_id' in currentItem) {
-				activity.application_id = currentItem.application_id;
-			}
 			if ('details' in currentItem) {
 				activity.details = currentItem.details;
 			}
 			if ('state' in currentItem) {
 				activity.state = currentItem.state;
-			}
-			if ('assets' in currentItem) {
-				activity.assets = currentItem.assets;
 			}
 
 			activitiesPayload = [
@@ -140,7 +122,7 @@ function updatePresence() {
 		}
 	}
 
-	// Envia de forma limpa para o Gateway
+	// Envia o payload limpo e sanitizado para o Gateway
 	shard.send({
 		op: 3,
 		d: {
@@ -156,12 +138,10 @@ function startSyncTimers() {
 	if (phrasesInterval) clearInterval(phrasesInterval);
 	if (statusInterval) clearInterval(statusInterval);
 
-	// Temporizador das frases cravado em 1.5 segundos
 	phrasesInterval = setInterval(() => {
 		updatePresence();
 	}, 1500);
 
-	// Loop de Status e Atividades (2 segundos)
 	statusInterval = setInterval(() => {
 		if (currentStatusMode === 'rotating') {
 			scheduleIndex = (scheduleIndex + 1) % rotatingSchedule.length;
@@ -232,7 +212,6 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 	try {
 		if (!botId) return;
 
-		// Verifica se a mensagem foi enviada pelo dono do selfbot
 		if (message.author?.id !== botId) return;
 
 		// ==========================================
@@ -287,7 +266,7 @@ client.on(GatewayDispatchEvents.MessageCreate, async ({ data: message }) => {
 			} else if (comandoStatus === 'after' || comandoStatus === 'aftereffects') {
 				currentStatusMode = 'after_effects';
 				updatePresence();
-				console.log('[STATUS] Modo fixo: After Effects Permanente com imagem corrigida.');
+				console.log('[STATUS] Modo fixo: After Effects Permanente.');
 			} else if (comandoStatus === 'rotate') {
 				currentStatusMode = 'rotating';
 				updatePresence();
@@ -310,4 +289,4 @@ process.on('SIGINT', () => {
 });
 
 client.connect().catch(() => {});
-	
+			
